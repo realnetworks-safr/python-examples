@@ -79,7 +79,6 @@ def main():
     df = pd.read_excel('data.xlsx', skiprows=0, usecols={0, 1, 2, 3, 4, 5}, encoding='latin-1')
     list = [tuple(x) for x in df.values]
     
-    listExec = []
     for a_name, a_person_type, a_external_id, a_age, a_gender, file_name in list:
         file_name = IMG_PATH.format(file_name)
         with open(file_name, 'rb') as upload_file:
