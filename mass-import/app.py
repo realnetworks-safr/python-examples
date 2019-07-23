@@ -8,7 +8,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
-logging.basicConfig(filename='app.log', filemode='w',level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(filename='app.log', filemode='w',level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logging.getLogger().addHandler(logging.StreamHandler())
 
 executor = ThreadPoolExecutor(max_workers=10)
@@ -78,12 +78,14 @@ def main():
     session = requests.Session()
     df = pd.read_excel('data.xlsx', skiprows=0, usecols={0, 1, 2, 3, 4, 5}, encoding='latin-1')
     list = [tuple(x) for x in df.values]
-    
     for a_name, a_person_type, a_external_id, a_age, a_gender, file_name in list:
         file_name = IMG_PATH.format(file_name)
-        with open(file_name, 'rb') as upload_file:
-            a_header = build_person(header = header, name = a_name, person_type = a_person_type, external_id = a_external_id, age = a_age, gender = a_gender)
-            executor.submit(create_person, session, a_header, params, upload_file)
+        try:
+            with open(file_name, 'rb') as upload_file:
+                a_header = build_person(header = header, name = a_name, person_type = a_person_type, external_id = a_external_id, age = a_age, gender = a_gender)
+                executor.submit(create_person, session, a_header, params, upload_file)
+        except FileNotFoundError as e:
+            logging.error('Missing file {}'.format(upload_file.name))
 
 if __name__ == '__main__':
     main()
