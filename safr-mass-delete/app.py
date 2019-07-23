@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import requests
 import base64
 import pandas as pd
@@ -10,7 +11,6 @@ logging.basicConfig(filename='app.log', filemode='w',level=logging.DEBUG, format
 logging.getLogger().addHandler(logging.StreamHandler())
 
 executor = ThreadPoolExecutor(max_workers=10)
-
 
 BASE_INT2_URL='https://covi.int2.real.com'
 BASE_PROD_URL='https://covi.real.com'
@@ -31,10 +31,10 @@ def createHeader(user_id, password, directory):
         KEY_HEADER_DIRECTORY : directory
     }
 
-header = createHeader('userid', 'passwd', 'directory')
+header = createHeader('userId', 'passwd', 'directory')
 
 def findPeople():
-    url = FIND_RESOURCE.format(BASE_INT2_URL,'?count=0&sort=name&sort-order=ascending&include-expired=true')
+    url = FIND_RESOURCE.format(BASE_INT2_URL,'?count=0&include-expired=true')
     response = session.get(url,  headers=header)
     response = response.json()["people"]
     return response
@@ -53,9 +53,7 @@ def main():
     print("Starting process...")
     listPeople = [] 
     for person in findPeople():
-        name = person.get('name')
-        if(name is None):
-            listPeople.append(person.get('personId'))
+        listPeople.append(person.get('personId'))
     for personId in listPeople:
         executor.submit(deletePeople, personId)
 
