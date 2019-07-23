@@ -1,0 +1,5 @@
+"2019-07-12 17:22:31,690"; "DEBUG"; "Starting new HTTPS connection (1): covi.int2.real.com:443"
+"2019-07-12 17:22:32,587"; "DEBUG"; "https://covi.int2.real.com:443 "GET /rootpeople/?count=0&sort=name&sort-order=ascending&include-expired=true HTTP/1.1" 200 1619"
+"2019-07-12 17:22:32,600"; "DEBUG"; "Starting new HTTPS connection (2): covi.int2.real.com:443"
+"2019-07-12 17:22:32,804"; "DEBUG"; "https://covi.int2.real.com:443 "DELETE /people/0c7c438b-b34f-4bd5-b37c-6ef39bd1e807 HTTP/1.1" 204 0"
+"2019-07-12 17:22:33,540"; "DEBUG"; "https://covi.int2.real.com:443 "DELETE /people/03046849-2318-4d22-8fcd-de0854d7b043 HTTP/1.1" 204 0"
