@@ -4,14 +4,11 @@ import numpy as np
 import requests
 import base64
 from datetime import datetime
+import time
 import logging
-from concurrent.futures import ThreadPoolExecutor
-import threading
 
-logging.basicConfig(filename='app.log', filemode='w',level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(filename='app.log', filemode='w',level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 logging.getLogger().addHandler(logging.StreamHandler())
-
-executor = ThreadPoolExecutor(max_workers=10)
 
 BASE_URL = 'https://covi.int2.real.com{0}'
 PEOPLE_URL = BASE_URL.format("/people?insert=true&update=false&merge=false")
@@ -22,9 +19,9 @@ KEY_HEADER_AUTHORIZATION='X-RPC-AUTHORIZATION'
 KEY_HEADER_DIRECTORY='X-RPC-DIRECTORY'
 IMG_PATH = 'images/{0}'
 
-user_id = 'userid'
-passwd = 'password'
-directory = 'main'
+user_id = 'realnetworksbra'
+passwd = 'qaz123'
+directory = 'test-import'
 site='test'
 source = 'pythonBatch'
 
@@ -66,13 +63,19 @@ def build_person(header, name, person_type, external_id, age, gender):
 def isEmpty(field):
     return field is None or field == '' or pd.isnull(field)
 
-def create_person(session, header, params, upload_file):
+def create_person(requests, header, params, upload_file):
     post_url = PEOPLE_URL.format(site, source)
-    response = session.post(post_url,  headers=header, data=upload_file.read(), stream=True)
-    logging.debug(response)
-    return response
+    response = requests.post(post_url,  headers=header, data=upload_file.read(), stream=True)
+    person = response.json()['identifiedFaces']
+    if(len(person) == 1):
+        logging.info('successfully registered {}'.format(upload_file.name))
+    elif (len(person) < 1):
+        logging.error('no face detedted for {}'.format(upload_file.name))
+    else:
+        logging.warn('too many faces detedted for {}'.format(upload_file.name))
+    logging.debug(person)
 
-def main():
+def process():
     header = createHeader(user_id, passwd, directory)
     params = {}
     session = requests.Session()
@@ -83,9 +86,18 @@ def main():
         try:
             with open(file_name, 'rb') as upload_file:
                 a_header = build_person(header = header, name = a_name, person_type = a_person_type, external_id = a_external_id, age = a_age, gender = a_gender)
-                executor.submit(create_person, session, a_header, params, upload_file)
-        except FileNotFoundError as e:
-            logging.error('Missing file {}'.format(upload_file.name))
+                create_person(session, a_header, params, upload_file)
+        except FileNotFoundError:
+            logging.error('Missing file {}'.format(file_name))
 
 if __name__ == '__main__':
-    main()
+    logging.info("Starting process...")
+    start_time = datetime.now()
+    try:
+        process()
+    except Exception as e:
+        logging.error('An error has ocurred. {}'.format(e))
+    finally:
+        end_time = datetime.now()
+        elapsed_time = end_time - start_time
+        logging.info('...ending process. Time slapsed {}'.format(elapsed_time))
