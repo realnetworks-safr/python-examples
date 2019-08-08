@@ -101,7 +101,7 @@ def process():
         try:
             with open(file_name, 'rb') as upload_file:
                 a_header = build_person(header = createHeader(user_id, passwd, directory), name = a_name, person_type = a_person_type, external_id = a_external_id, age = a_age, gender = a_gender)
-                create_person(session, createHeader(user_id, passwd, directory), params, upload_file)
+                create_person(session, a_header, params, upload_file)
         except FileNotFoundError:
             logging.error('Missing file {}'.format(file_name))
 
