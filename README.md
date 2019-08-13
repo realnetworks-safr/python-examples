@@ -9,8 +9,8 @@ python version 3 installed.
 ## HOW-TO
 
 ### Install dependencies
-pip install -r requirements.txt --upgrade
-or, if you have more than one version of python installed:
+pip install -r requirements.txt --upgrade  
+or, if you have more than one version of python installed:  
 pip3 install -r requirements.txt --upgrade --user
 
 ### Run the script
