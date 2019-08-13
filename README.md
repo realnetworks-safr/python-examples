@@ -4,7 +4,7 @@ Usage of SAFR plataform using python.
 Examples found here are meant for reference purpose, not production
 
 ## Requirements
-python version 3 installed.
+python **version 3** installed.
 
 ## HOW-TO
 
