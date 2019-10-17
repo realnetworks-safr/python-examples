@@ -6,9 +6,6 @@ import logging
 import numpy as np
 import os
 import cv2
-import imutils
-import dlib
-from imutils.face_utils import FaceAligner
 import requests
 import base64
 import json
@@ -18,9 +15,9 @@ logging.basicConfig(filename='app.log', filemode='w',level=logging.INFO, format=
 logging.getLogger().addHandler(logging.StreamHandler())
 
 BASE_URL = 'https://covi.int2.real.com{0}'
-user_id = 'userid'
-passwd = 'pwd'
-directory = 'main'
+user_id = 'realnetworksbra'
+passwd = 'qaz123'
+directory = 'test-align4'
 site='test'
 source = 'pythonBatch'
 
@@ -33,11 +30,6 @@ PEOPLE_URL = PEOPLE_URL+"insert=true&insert-profile=true"
 PEOPLE_URL = PEOPLE_URL+"&update=false&merge=false"
 PEOPLE_URL = PEOPLE_URL+"&detect-age=false&detect-gender=false&detect-sentiment=false"
 PEOPLE_URL = PEOPLE_URL+"&source=batchImport&site={0}&source={1}"
-PEOPLE_URL = PEOPLE_URL+"&min-cpq=0.53"
-
-detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
-fa = FaceAligner(predictor, desiredFaceWidth=400)
 
 retry_files = []
 
@@ -85,16 +77,16 @@ def build_person(header, name):
 def isEmpty(field):
     return field is None or field == ''
 
-def alignImage(file_path, name):
+def rotateImage(file_path, name, angle):
     image = cv2.imread(file_path, cv2.IMREAD_COLOR)
-    grayImage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
-    rects = detector(grayImage, 2)
-    for rect in rects:
-        faceAligned = fa.align(image, grayImage, rect)
-        new_file_path = NEW_PATH_ALIGNED + name + ".jpg"
-        cv2.imwrite(new_file_path, faceAligned)
-        return new_file_path
+    (h, w) = image.shape[:2]
+    center = (w / 2, h / 2)
+    scale = 1.0
+    M = cv2.getRotationMatrix2D(center, angle, scale)
+    image = cv2.warpAffine(image, M, (h, w)) 
+    new_file_path = NEW_PATH_ALIGNED + name +"_"+str(angle)+ ".jpg"
+    cv2.imwrite(new_file_path, image)
+    return new_file_path
 
 def create_person(sess, header, params, upload_file):
     post_url = PEOPLE_URL.format(site, source)
@@ -107,11 +99,12 @@ def create_person(sess, header, params, upload_file):
                 logging.error('too many faces detected for {}'.format(upload_file.name))
             elif 'personId' not in person[0].keys() and 'mediaId' in person[0].keys():
                 logging.error('{} not registered. Face not detected. Check detected quality attributes: {}'.format(upload_file.name, get_quality_params(person[0])))
+                return True #Not actually a correct response, but it´s not worth retrying
             elif 'personId' in person[0].keys() and 'newId' in person[0].keys() and person[0]['newId']==True:
-                logging.info('Face detected. registered. Person-Id {}'.format(person[0]['personId']))
+                logging.info('Face detected for {}. registered. Person-Id {}'.format(upload_file.name, person[0]['personId']))
                 return True
             elif 'personId' in person[0].keys() and 'newId' not in person[0].keys():
-                logging.warning('Face detected. Updated. Person-Id {}'.format(person[0]['personId']))
+                logging.warning('Face detected for {}. Updated. Person-Id {}'.format(upload_file.name, person[0]['personId']))
                 return True
         return False
 
@@ -142,13 +135,15 @@ def process(path):
     for f in retry_files:
         person_name = f.replace(path, '').split('-')[0]
         try:
-            file_name =  alignImage(f, person_name)
-            if file_name == None:
-                logging.error('Not possible to realign {}'.format(f))
-            else:
-                a_header = build_person(header = createHeader(user_id, passwd, directory), name = person_name)
-                with open(file_name, 'rb') as data:
-                    create_person(sess, a_header, params, data)
+            for angle in (90, 180, 270):
+                file_name =  rotateImage(f, person_name, angle)
+                if file_name == None:
+                    logging.error('Not possible to realign {}'.format(f))
+                else:
+                    a_header = build_person(header = createHeader(user_id, passwd, directory), name = person_name)
+                    with open(file_name, 'rb') as data:
+                        if(create_person(sess, a_header, params, data)):
+                            break
         except FileNotFoundError:
             logging.error('Missing file {}'.format(f))
 
