@@ -1,7 +1,4 @@
 opencv-contrib-python
-imutils
-dlib
 requests==2.22.0
 Pillow==6.1.0
 datetime==4.3
-numpy
