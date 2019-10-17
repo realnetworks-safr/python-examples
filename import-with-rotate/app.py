@@ -3,7 +3,6 @@
 from datetime import datetime
 import time
 import logging
-import numpy as np
 import os
 import cv2
 import requests
@@ -15,8 +14,8 @@ logging.basicConfig(filename='app.log', filemode='w',level=logging.INFO, format=
 logging.getLogger().addHandler(logging.StreamHandler())
 
 BASE_URL = 'https://covi.int2.real.com{0}'
-user_id = 'realnetworksbra'
-passwd = 'qaz123'
+user_id = 'userid'
+passwd = 'pwd'
 directory = 'test-align4'
 site='test'
 source = 'pythonBatch'
