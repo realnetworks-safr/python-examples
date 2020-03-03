@@ -1,0 +1,6 @@
+Pillow==6.1.0
+datetime==4.3
+requests==2.23.0
+opencv-contrib-python==4.2.0.32
+numpy==1.18.1
+pandas==1.0.1
