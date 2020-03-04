@@ -43,7 +43,8 @@ URL_RECOGNITION = BASE_URL.format('/people?')
 URL_RECOGNITION = URL_RECOGNITION + 'insert=false&update=false&merge=false&regroup=false&insert-profile=false'
 URL_RECOGNITION = URL_RECOGNITION + '&provide-face-id=false&differentiate=false'
 #disabled detectors, decrease memory/cpu usage
-URL_RECOGNITION = URL_RECOGNITION + '&detect-age=false&detect-gender=false&detect-sentiment=false&detect-occlusion=false&min-size=0'
+URL_RECOGNITION = URL_RECOGNITION + '&detect-age=false&detect-gender=false&detect-sentiment=false'
+URL_RECOGNITION = URL_RECOGNITION + '&detect-occlusion=true&min-size=0'
 #disabled filter, allow anything
 URL_RECOGNITION = URL_RECOGNITION + '&min-cpq=0&min-fsq=0&min-fcq=0&max-occlusion=0&type=person&include-expired=false'
 URL_RECOGNITION = URL_RECOGNITION + '&site={}&source={}'.format(SITE, SOURCE)
@@ -104,10 +105,10 @@ def get_model_points():
         (150.0, -150.0, -125.0)      # Right mouth corner
     ])
 
-def get_landmarks(personObj):
+def get_attributes(personObj):
     response = {}
     attributes = personObj['attributes']
-    logging.debug('attributes {}'.format(attributes))
+    response.update( {'occlusion' : None} )
     if 'landmarks' in attributes.keys():
         logging.debug('attributes {}'.format(attributes))
         attributes = attributes['landmarks']
@@ -132,6 +133,8 @@ def get_landmarks(personObj):
             attr = attributes['left-mouth-corner']
             response.update( {'left-mouth-corner-x' : attr['x']} )
             response.update( {'left-mouth-corner-y' : attr['y']} )
+    if 'occlusion' in attributes.keys():        
+        response.update( {'occlusion' : attributes['occlusion']} )
     return response
 
 def get_roll_pitch_yaw(model_points, image_points, size):
@@ -165,6 +168,8 @@ def submit_photo(sess, header, relative_file_path):
     try:
         with open(relative_file_path, 'rb') as upload_file:
             with sess.post(URL_RECOGNITION.format(SITE, SOURCE),  headers=header, data=upload_file) as response:
+                if response.status_code == 401:
+                    raise Exception('Could not connect, check the credentials: {}:{} and the URL: {}'.format(user_id, passwd, URL_RECOGNITION))
                 if response.status_code == requests.codes.created:
                     logging.debug('response {}'.format(response))
                     response = response.json()['identifiedFaces']
@@ -190,7 +195,7 @@ def move_file(target_file, new_path):
     new_file_path = os.path.realpath(target_file).replace(SOURCE_PATH, new_path)
     shutil.move(moved_path, new_file_path)
 
-def verify_params(relative_file_path, dimension, quality_params):
+def verify_params(relative_file_path, dimension, quality_params, occlusion):
     global count_success
     global count_errors
 
@@ -205,7 +210,7 @@ def verify_params(relative_file_path, dimension, quality_params):
         #move to NOK folder
         count_errors = count_errors +1
         move_file(relative_file_path, NOK_PATH)
-        logging.info('File: {} is  {}. Moving to {} folder. Params: {}'.format(relative_file_path, 'Not Ok', NOK_PATH, [dimension, quality_params]))
+        logging.info('File: {} is  {}. Moving to {} folder. dimension: {}, quality_params{}, occlusion: {}'.format(relative_file_path, 'Not Ok', NOK_PATH, dimension, quality_params, occlusion))
         return 'NOK'
     
     #move to OK folder    
@@ -227,6 +232,7 @@ def process(path):
     list_quality_params_contrast = []
     list_quality_params_center_pose_quality = []
     list_status = []
+    list_occlusion = []
 
     a_session = requests.Session()
     a_header = createHeader(user_id, passwd, DIRECTORY)
@@ -246,27 +252,29 @@ def process(path):
                 logging.debug('Size {}'.format(str(size)))
 
                 dimension = {}
-                landmarks = {}
+                attributes = {}
                 quality_params = {}
                 pitch = {}
                 yaw = {}
                 roll = {}
+                occlusion = {}
 
                 person_obj = submit_photo(a_session, a_header, relative_file_path)
                 logging.debug('Person as JSON object {}'.format(person_obj))
 
                 if (bool(person_obj)):
                     dimension = get_dimension(person_obj)
-                    quality_params = get_quality_params(person_obj)
-                    landmarks = get_landmarks(person_obj)                    
+                    attributes = get_attributes(person_obj)
+                    quality_params = get_quality_params(person_obj)                    
 
-                    image_points = get_image_points(landmarks)
+                    image_points = get_image_points(attributes)
                     model_points = get_model_points()
+                    occlusion = attributes['occlusion']
 
                     (pitch, yaw, roll) = get_roll_pitch_yaw(model_points, image_points, size)
 
-                    is_ok = verify_params(relative_file_path, dimension, quality_params)
-
+                    is_ok = verify_params(relative_file_path, dimension, quality_params, occlusion)
+                    list_occlusion.append(occlusion)
                     list_sources.append(relative_file_path)
                     list_face_height.append(dimension['height'])
                     list_face_width.append(dimension['width'])
@@ -278,9 +286,9 @@ def process(path):
                     list_quality_params_center_pose_quality.append(quality_params['centerPoseQuality'])
                     list_status.append(is_ok)
 
-                    logging.debug('landmarks {}'.format(str(landmarks)))
-                    logging.debug('image_points {}'.format(str(image_points)))
-                    logging.debug('model_points {}'.format(str(model_points)))
+                    logging.debug('attributes: {}'.format(str(attributes)))
+                    logging.debug('image_points: {}'.format(str(image_points)))
+                    logging.debug('model_points: {}'.format(str(model_points)))
                 else:
                     list_sources.append(relative_file_path)
                     list_face_height.append(None)
@@ -292,6 +300,10 @@ def process(path):
                     list_quality_params_contrast.append(None)
                     list_quality_params_center_pose_quality.append(None)
                     list_status.append("NOK")
+                    list_occlusion.append(None)
+
+                TEMPLATE_MSG = 'Image: {} \n Size: {} \n Roll {} \n Pitch:: {} \n Yaw: {} \n Quality Params: {} \n Occlusion: {} \n\n '
+                logging.debug(TEMPLATE_MSG.format(relative_file_path, dimension, pitch, roll, yaw, quality_params, occlusion))
 
                 df = pd.DataFrame({
                     'Source':list_sources, 
@@ -303,14 +315,13 @@ def process(path):
                     'Yaw':list_yaws,
                     'Sharpness':list_quality_params_sharpness,
                     'Contrast':list_quality_params_contrast,
-                    'Center Pose Quality':list_quality_params_center_pose_quality
-                    })
-
+                    'Center Pose Quality':list_quality_params_center_pose_quality,
+                    'Occlusion':list_occlusion
+                })                
                 df.to_csv('result.csv', encoding='utf-8', index=False, sep=";")
 
     total = cont
-    TEMPLATE_MSG = 'Image: {} \n Size: {} \n Roll {} \n Pitch:: {} \n Yaw: {} \n Quality Params: {} \n\n '
-    logging.debug(TEMPLATE_MSG.format(relative_file_path, dimension, pitch, roll, yaw, quality_params))
+
 
 if __name__ == '__main__':
     logging.info("Starting process...")
