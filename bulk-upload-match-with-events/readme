@@ -1,0 +1,1 @@
+process all *.jpg files within images folder and upload/match them, create an event for each and add thumbnail
