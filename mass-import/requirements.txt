@@ -1,5 +1,4 @@
-requests
-pandas
-numpy
-xlrd
-json
+requests==2.23.0
+pandas==1.0.3
+numpy==1.19.1
+xlrd==1.2.0
