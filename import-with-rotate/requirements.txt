@@ -1,4 +1,4 @@
 opencv-contrib-python
 requests==2.22.0
-Pillow==6.2.2
+Pillow==9.3.0
 datetime==4.3
